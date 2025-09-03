@@ -218,10 +218,13 @@ GlimROS::GlimROS(const rclcpp::NodeOptions& options) : Node("glim_ros", options)
 
 GlimROS::~GlimROS() {
   spdlog::debug("quit");
-  extension_modules.clear();
+
+  timer.reset();
+  imu_sub.reset();
+  points_sub.reset();
 
   if (dump_on_unload) {
-    wait(true);
+    // wait(true);
     save(dump_path);
 
     if (global_mapping) {
@@ -262,6 +265,11 @@ GlimROS::~GlimROS() {
       spdlog::warn("Global mapping이 활성화되지 않아 포인트 클라우드를 저장할 수 없습니다.");
     }
   }
+
+  global_mapping.reset();
+  sub_mapping.reset();
+  odometry_estimation.reset();
+  extension_modules.clear();
 }
 
 const std::vector<std::shared_ptr<GenericTopicSubscription>>& GlimROS::extension_subscriptions() {

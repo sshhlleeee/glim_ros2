@@ -16,12 +16,11 @@ int main(int argc, char** argv) {
   rclcpp::spin(glim);
   rclcpp::shutdown();
 
-  std::string dump_path = "/tmp/dump";
-  glim->declare_parameter<std::string>("dump_path", dump_path);
-  glim->get_parameter<std::string>("dump_path", dump_path);
+  // std::string dump_path = "/tmp/dump";
 
-  glim->wait();
-  glim->save(dump_path);
+  // glim->wait();
+  // glim->save(dump_path);
+  // glim.reset();
 
   return 0;
 }
