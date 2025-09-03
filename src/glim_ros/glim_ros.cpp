@@ -188,9 +188,27 @@ GlimROS::GlimROS(const rclcpp::NodeOptions& options) : Node("glim_ros", options)
 
   // ROS-related
   using std::placeholders::_1;
-  const std::string imu_topic = config_ros.param<std::string>("glim_ros", "imu_topic", "");
-  const std::string points_topic = config_ros.param<std::string>("glim_ros", "points_topic", "");
-  const std::string image_topic = config_ros.param<std::string>("glim_ros", "image_topic", "");
+  std::string imu_topic;
+  std::string points_topic;
+  std::string image_topic;
+
+  // 1. 노드 파라미터 선언 (런치에서 넘어오면 여기서 읽힘)
+  this->declare_parameter<std::string>("imu_topic");
+  this->declare_parameter<std::string>("points_topic");
+
+  // 2. 런치에서 값 가져오기 시도
+  bool has_imu = this->get_parameter("imu_topic", imu_topic);
+  bool has_points = this->get_parameter("points_topic", points_topic);
+
+  // 3. 런치에서 값 없으면 config_ros.param에서 가져오기
+  if (!has_imu) {
+      imu_topic = config_ros.param<std::string>("glim_ros", "imu_topic", "");
+  }
+  if (!has_points) {
+      points_topic = config_ros.param<std::string>("glim_ros", "points_topic", "");
+  }
+  image_topic = config_ros.param<std::string>("glim_ros", "image_topic", "");
+
 
   // Subscribers
   rclcpp::SensorDataQoS default_imu_qos;

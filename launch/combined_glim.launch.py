@@ -18,7 +18,7 @@ lvx_file_path = '/home/livox/livox_test.lvx'
 cmdline_bd_code = 'livox0000000001'
 
 livox_config_dir = os.path.join(
-    get_package_share_directory('glim_ros2'),
+    get_package_share_directory('glim_ros'),
     'config'
     )
 user_config_path = os.path.join(livox_config_dir, 'MID360_config.json')
@@ -38,13 +38,13 @@ livox_ros2_params = [
 
 def generate_launch_description():
 
-    map_dir_arg = DeclareLaunchArgument(
-        "map_dir",
-        default_value="/root/map/map_default",
-        description="Directory of the pcd file, not the path!"
+    ply_filename_arg = DeclareLaunchArgument(
+        "ply_filename",
+        default_value="map",
+        description="File name of contructed point cloud map, without ext"
     )
-    pc2_topic_arg = DeclareLaunchArgument(
-        "pc2_topic",
+    points_topic_arg = DeclareLaunchArgument(
+        "points_topic",
         default_value="/livox/lidar_front",
         description="pointcloud topic name for lio"
     )
@@ -58,11 +58,17 @@ def generate_launch_description():
         default_value="true",
         description="On/Off pointcloud2 concatnation"
     )
+    dump_on_unload_arg = DeclareLaunchArgument(
+        "dump_on_unload",
+        default_value="true",
+        description="Auto save .ply, true or false"
+    )
     
-    map_dir = LaunchConfiguration("map_dir")
-    pc2_topic = LaunchConfiguration("pc2_topic")
+    ply_filename = LaunchConfiguration("ply_filename")
+    points_topic = LaunchConfiguration("points_topic")
     imu_topic = LaunchConfiguration("imu_topic")
     use_concat = LaunchConfiguration("use_concat")
+    dump_on_unload = LaunchConfiguration("dump_on_unload")
     
     livox_driver_node = ComposableNode(
         package='livox_ros_driver2',
@@ -93,71 +99,18 @@ def generate_launch_description():
         condition=IfCondition(use_concat)
     )
     
-    # 1. base -> imu transform을 위한 노드
-    static_tf_imu_node = ComposableNode(
-        package='tf2_ros',
-        plugin='tf2_ros::StaticTransformBroadcasterNode',
-        name='static_tf_publisher_base_to_imu',  # 고유한 이름 부여
-        parameters=[{
-                'frame_id': 'base',
-                'child_frame_id': 'imu',
-                'translation.x': 0.37282,
-                'translation.y': 0.0,
-                'translation.z': 0.12777,
-                'rotation.x': 0.0,
-                'rotation.y': 0.30071,
-                'rotation.z': 0.0,
-                'rotation.w': 0.95372
-            }]
-    )
-    
-    static_tf_lidar_node = ComposableNode(
-        package='tf2_ros',
-        plugin='tf2_ros::StaticTransformBroadcasterNode',
-        name='static_tf_publisher_base_to_lidar',  # 고유한 이름 부여
-        parameters=[{
-                'frame_id': 'base',
-                'child_frame_id': 'livox_frame',
-                'translation.x': 0.37282,
-                'translation.y': 0.0,
-                'translation.z': 0.12777,
-                'rotation.x': 0.0,
-                'rotation.y': 0.30071,
-                'rotation.z': 0.0,
-                'rotation.w': 0.95372
-            }]
-    )
-
-    # 2. map -> odom transform을 위한 노드
-    static_tf_odom_node = ComposableNode(
-        package='tf2_ros',
-        plugin='tf2_ros::StaticTransformBroadcasterNode',
-        name='static_tf_publisher_map_to_odom',  # 고유한 이름 부여
-        parameters=[{
-                'frame_id': 'map',
-                'child_frame_id': 'odom',
-                'translation.x': 0.0,
-                'translation.y': 0.0,
-                'translation.z': 0.0,
-                'rotation.x': 0.0,
-                'rotation.y': 0.0,
-                'rotation.z': 0.0,
-                'rotation.w': 1.0
-            }]
-    )
-    
-    # LIO3DNode
-    lio_node = ComposableNode(
-        package='plain_slam_ros2',
-        plugin='pslam::LIO3DNode', # CMakeLists.txt에 등록한 클래스 이름
-        name='lio_3d_node',
+    # GLIM Node
+    glim_node = ComposableNode(
+        package='glim_ros',
+        plugin='glim::GlimROS', # CMakeLists.txt에 등록한 클래스 이름
+        name='glim_ros',
         parameters=[
-            lio_config_yaml,
-            {'param_files_dir': config_dir,
-             'use_as_localizer': True,
-             'map_cloud_dir': map_dir,
-             'pointcloud_topic': pc2_topic,
-             'imu_topic': imu_topic}
+            {
+             'imu_topic': imu_topic,
+             'points_topic': points_topic,
+             'ply_filename': ply_filename,
+             'dump_on_unload': dump_on_unload,
+            }
         ],
     )
  
@@ -170,16 +123,14 @@ def generate_launch_description():
         composable_node_descriptions=[
             livox_driver_node,
             pointcloud_concat_node,
-            static_tf_imu_node,
-            static_tf_lidar_node,
-            static_tf_odom_node,
-            lio_node
+            glim_node
         ],
         output='screen',
     )
 
-    return LaunchDescription([map_dir_arg,
-                              pc2_topic_arg,
+    return LaunchDescription([ply_filename_arg,
+                              dump_on_unload_arg,
+                              points_topic_arg,
                               imu_topic_arg,
                               use_concat_arg,
                               container])
