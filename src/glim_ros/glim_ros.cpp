@@ -5,6 +5,11 @@
 #include <deque>
 #include <thread>
 #include <iostream>
+#include <filesystem>
+#include <string>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 #include <functional>
 #include <boost/format.hpp>
 #include <spdlog/spdlog.h>
@@ -37,6 +42,8 @@
 #include <glim_ros/ros_compatibility.hpp>
 #include <glim_ros/ros_qos.hpp>
 
+#include <glk/io/ply_io.hpp>
+
 namespace glim {
 
 GlimROS::GlimROS(const rclcpp::NodeOptions& options) : Node("glim_ros", options) {
@@ -61,6 +68,12 @@ GlimROS::GlimROS(const rclcpp::NodeOptions& options) : Node("glim_ros", options)
   dump_on_unload = false;
   this->declare_parameter<bool>("dump_on_unload", false);
   this->get_parameter<bool>("dump_on_unload", dump_on_unload);
+
+  this->declare_parameter<std::string>("dump_path", "/tmp/dump");
+  this->get_parameter("dump_path", this->dump_path);
+
+  this->declare_parameter<std::string>("ply_filename", "map");
+  this->get_parameter("ply_filename", this->ply_filename);
 
   if (dump_on_unload) {
     spdlog::info("dump_on_unload={}", dump_on_unload);
@@ -208,15 +221,53 @@ GlimROS::~GlimROS() {
   extension_modules.clear();
 
   if (dump_on_unload) {
-    std::string dump_path = "/tmp/dump";
     wait(true);
     save(dump_path);
+
+    if (global_mapping) {
+      spdlog::info("최종 포인트 클라우드를 .ply 파일로 저장 시작...");
+      const auto points = global_mapping->export_points();
+
+      if (points.empty()) {
+        spdlog::warn("포인트 클라우드가 비어있어 저장을 건너뜁니다.");
+      } else {
+        // 현재 시간
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+
+        // tm 구조체 (UTC 말고 로컬 시간)
+        std::tm tm = *std::localtime(&t);
+
+        // 포맷: YYMMDD_HHMM (예: 250903_1223)
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%y%m%d_%H%M");
+
+        // 최종 directory
+        std::filesystem::path dir_path = std::filesystem::path("/tmp/map_glim") / (oss.str() + "_" + ply_filename);
+
+        if (!std::filesystem::exists(dir_path)) {
+            // 존재하지 않으면 생성
+            if (!std::filesystem::create_directories(dir_path)) {
+                std::cerr << "[ERROR] Failed to create directory: " << dir_path << std::endl;
+            }
+        }
+        
+        std::filesystem::path ply_full_path = dir_path / ply_filename;
+        
+        spdlog::info("포인트 클라우드 저장 경로: {}", ply_full_path.string());
+        glk::save_ply_binary(ply_full_path.string()+".ply", points.data(), points.size());
+        spdlog::info("포인트 클라우드 저장 완료!");
+      }
+    } else {
+      spdlog::warn("Global mapping이 활성화되지 않아 포인트 클라우드를 저장할 수 없습니다.");
+    }
   }
 }
 
 const std::vector<std::shared_ptr<GenericTopicSubscription>>& GlimROS::extension_subscriptions() {
   return extension_subs;
 }
+
 
 void GlimROS::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg) {
   spdlog::trace("IMU: {}.{}", msg->header.stamp.sec, msg->header.stamp.nanosec);

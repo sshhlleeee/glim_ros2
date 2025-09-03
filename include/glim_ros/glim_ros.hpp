@@ -54,6 +54,8 @@ private:
   double points_time_offset;
   double acc_scale;
   bool dump_on_unload;
+  std::string dump_path;      // map data directory
+  std::string ply_filename;   // .ply file name
 
   std::string intensity_field, ring_field;
 

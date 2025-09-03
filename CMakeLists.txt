@@ -102,4 +102,11 @@ if(BUILD_WITH_VIEWER)
   )
 endif()
 
+# Install config files
+install(DIRECTORY
+  launch
+  config
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 ament_auto_package()
