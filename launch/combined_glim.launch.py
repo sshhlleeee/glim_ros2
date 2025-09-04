@@ -76,10 +76,10 @@ def generate_launch_description():
         name='livox_ros_driver',
         parameters=livox_ros2_params,
         remappings=[
-            ("/livox/lidar_192.168.0.156", "/livox/lidar_front"),
-            ("/livox/imu_192.168.0.156", "/livox/imu_front"),
-            ("/livox/lidar_192.168.0.157", "/livox/lidar_back"),
-            ("/livox/imu_192.168.0.157", "/livox/imu_back"),
+            ("/livox/lidar_192_168_0_156", "/livox/lidar_front"),
+            ("/livox/imu_192_168_0_156", "/livox/imu_front"),
+            ("/livox/lidar_192_168_0_157", "/livox/lidar_back"),
+            ("/livox/imu_192_168_0_157", "/livox/imu_back"),
         ]
     )
     
